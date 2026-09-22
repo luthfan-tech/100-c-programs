@@ -1,3 +1,5 @@
+//Program 003: Print ASCII Art
+
 #include <stdio.h>
 
 int main(void) {
@@ -9,3 +11,10 @@ int main(void) {
            "*********\n");
     return 0;
 }
+
+//Expected output:
+/*  *
+   ***
+  *****
+ *******
+*********  */
