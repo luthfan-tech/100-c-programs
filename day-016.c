@@ -12,7 +12,11 @@ int main(void) {
         return 1;
     }
 
+<<<<<<< HEAD
     printf("\nInitial values: a = %d, b = %d\n", a, b);
+=======
+    printf("\nInitial values:          a = %d, b = %d\n", a, b);
+>>>>>>> db986efe27c790dccdd84545f62d524bc6f52856
 
     /* Method 1: Using a temporary third variable (Recommended) */
     int temp = a;
@@ -38,4 +42,9 @@ Enter two integers (a and b): 42 99
 Initial values:             a = 42, b = 99
 After swap (with temp):     a = 99, b = 42
 After swap back (via XOR):  a = 42, b = 99
+<<<<<<< HEAD
 */
+=======
+
+*/
+>>>>>>> db986efe27c790dccdd84545f62d524bc6f52856
