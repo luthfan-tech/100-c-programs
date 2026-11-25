@@ -1,79 +1,84 @@
-// Program 068 — Subarray Sums: Prefix Sum Range Queries & Kadane's Algorithm
+// Program 068 — Insertion Sort and Merging Two Sorted Arrays
 
 #include <stdio.h>
 #include <stdlib.h>
 
-#define MAX_CAPACITY 100
+#define MAX_HALF_CAPACITY 50
+
+/* Telemetry struct tracking comparisons and memory write operations */
+typedef struct
+{
+    long long comparisons;
+    long long writes;
+} OpStats;
 
 /* Function Prototypes */
-int read_array(int arr[], int n);
+int read_array(int arr[], int n, const char *name);
 void print_array(const char *label, const int arr[], int n);
-void build_prefix_sum(const int arr[], long long prefix[], int n);
-long long range_sum(const long long prefix[], int left, int right);
-void kadane_max_subarray(const int arr[], int n, long long *max_sum,
-                         int *start_idx, int *end_idx);
+OpStats insertion_sort(int arr[], int n);
+OpStats merge_sorted_arrays(const int a[], int n1, const int b[], int n2, int dest[]);
 
 int main(void)
 {
-    int n = 0;
-    int arr[MAX_CAPACITY];
-    long long prefix[MAX_CAPACITY + 1];
+    int n1 = 0, n2 = 0;
+    int arr1[MAX_HALF_CAPACITY];
+    int arr2[MAX_HALF_CAPACITY];
+    int merged[MAX_HALF_CAPACITY * 2];
 
-    printf("Enter number of elements N (1 to %d): ", MAX_CAPACITY);
-    if (scanf("%d", &n) != 1 || n < 1 || n > MAX_CAPACITY)
+    /* 1. Read First Array */
+    printf("Enter size of Array A (1 to %d): ", MAX_HALF_CAPACITY);
+    if (scanf("%d", &n1) != 1 || n1 < 1 || n1 > MAX_HALF_CAPACITY)
     {
-        fprintf(stderr, "Error: Please enter a valid integer between 1 and %d.\n", MAX_CAPACITY);
+        fprintf(stderr, "Error: Size must be between 1 and %d.\n", MAX_HALF_CAPACITY);
+        return EXIT_FAILURE;
+    }
+    if (!read_array(arr1, n1, "A"))
+    {
+        fprintf(stderr, "Error: Invalid integer input for Array A.\n");
         return EXIT_FAILURE;
     }
 
-    printf("Enter %d integer(s) (positive, zero, or negative):\n", n);
-    if (!read_array(arr, n))
+    /* 2. Read Second Array */
+    printf("\nEnter size of Array B (1 to %d): ", MAX_HALF_CAPACITY);
+    if (scanf("%d", &n2) != 1 || n2 < 1 || n2 > MAX_HALF_CAPACITY)
     {
-        fprintf(stderr, "Error: Invalid integer input encountered.\n");
+        fprintf(stderr, "Error: Size must be between 1 and %d.\n", MAX_HALF_CAPACITY);
+        return EXIT_FAILURE;
+    }
+    if (!read_array(arr2, n2, "B"))
+    {
+        fprintf(stderr, "Error: Invalid integer input for Array B.\n");
         return EXIT_FAILURE;
     }
 
-    printf("\n--- Input Buffer ---\n");
-    print_array("Array", arr, n);
+    /* 3. Sort Both Arrays via Insertion Sort */
+    printf("\n--- Stage 1: Insertion Sort ---\n");
+    print_array("Array A (Unsorted)", arr1, n1);
+    OpStats stats_a = insertion_sort(arr1, n1);
+    print_array("Array A (Sorted)  ", arr1, n1);
+    printf("  -> Comparisons: %lld | Memory Writes: %lld\n\n", stats_a.comparisons, stats_a.writes);
 
-    /* 1. Prefix Sum Preprocessing & O(1) Range Query */
-    build_prefix_sum(arr, prefix, n);
+    print_array("Array B (Unsorted)", arr2, n2);
+    OpStats stats_b = insertion_sort(arr2, n2);
+    print_array("Array B (Sorted)  ", arr2, n2);
+    printf("  -> Comparisons: %lld | Memory Writes: %lld\n", stats_b.comparisons, stats_b.writes);
 
-    int left = 0, right = 0;
-    printf("\n--- 1. Prefix Sum O(1) Range Query ---\n");
-    printf("Enter inclusive query range [L, R] (0 <= L <= R < %d): ", n);
-    if (scanf("%d %d", &left, &right) != 2 || left < 0 || right >= n || left > right)
-    {
-        fprintf(stderr, "Error: Invalid range. Must satisfy 0 <= L <= R < %d.\n", n);
-        return EXIT_FAILURE;
-    }
-
-    printf("Sum of subarray [%d..%d]: %lld\n", left, right, range_sum(prefix, left, right));
-
-    /* 2. Kadane's Maximum Contiguous Subarray */
-    long long max_sum = 0;
-    int best_start = 0, best_end = 0;
-    kadane_max_subarray(arr, n, &max_sum, &best_start, &best_end);
-
-    printf("\n--- 2. Kadane's Maximum Contiguous Subarray ---\n");
-    printf("Maximum Subarray Sum : %lld\n", max_sum);
-    printf("Optimal Slice Range  : [%d..%d]\n", best_start, best_end);
-    printf("Subarray Elements    : [");
-    for (int i = best_start; i <= best_end; i++)
-    {
-        printf("%d%s", arr[i], (i < best_end) ? ", " : "");
-    }
-    printf("]\n");
+    /* 4. Merge Both Sorted Arrays in O(N + M) Time */
+    printf("\n--- Stage 2: Two-Pointer Linear Merge ---\n");
+    OpStats stats_merge = merge_sorted_arrays(arr1, n1, arr2, n2, merged);
+    print_array("Merged Result     ", merged, n1 + n2);
+    printf("  -> Comparisons: %lld | Memory Writes: %lld\n", stats_merge.comparisons, stats_merge.writes);
 
     return EXIT_SUCCESS;
 }
 
 /* Reads n integers into arr. Returns 1 on success, 0 on failure. */
-int read_array(int arr[], int n)
+int read_array(int arr[], int n, const char *name)
 {
+    printf("Enter %d integer(s) for Array %s:\n", n, name);
     for (int i = 0; i < n; i++)
     {
-        printf("  arr[%d] = ", i);
+        printf("  %s[%d] = ", name, i);
         if (scanf("%d", &arr[i]) != 1)
         {
             return 0;
@@ -93,88 +98,107 @@ void print_array(const char *label, const int arr[], int n)
     printf("]\n");
 }
 
-/* Builds 1-indexed prefix sum array in O(N) time. */
-void build_prefix_sum(const int arr[], long long prefix[], int n)
-{
-    prefix[0] = 0;
-    for (int i = 0; i < n; i++)
-    {
-        prefix[i + 1] = prefix[i] + arr[i];
-    }
-}
-
-/* Answers inclusive range sum [left, right] in O(1) constant time. */
-long long range_sum(const long long prefix[], int left, int right)
-{
-    return prefix[right + 1] - prefix[left];
-}
-
 /*
- * Kadane's Algorithm: Finds maximum contiguous subarray sum and its indices
- * in O(N) time and O(1) auxiliary space. Handles all-negative arrays accurately.
+ * Shift-Based Insertion Sort:
+ * O(N) best case on sorted data, O(N^2) worst case.
  */
-void kadane_max_subarray(const int arr[], int n, long long *max_sum,
-                         int *start_idx, int *end_idx)
+OpStats insertion_sort(int arr[], int n)
 {
-    if (n <= 0 || arr == NULL)
-    {
-        return;
-    }
-
-    long long current_sum = arr[0];
-    long long best_sum = arr[0];
-    int temp_start = 0;
-    int best_start = 0;
-    int best_end = 0;
+    OpStats stats = {0, 0};
 
     for (int i = 1; i < n; i++)
     {
-        if ((long long)arr[i] > current_sum + arr[i])
+        int key = arr[i];
+        int j = i - 1;
+
+        while (j >= 0)
         {
-            current_sum = arr[i];
-            temp_start = i;
-        }
-        else
-        {
-            current_sum += arr[i];
+            stats.comparisons++;
+            if (arr[j] > key)
+            {
+                arr[j + 1] = arr[j];
+                stats.writes++;
+                j--;
+            }
+            else
+            {
+                break;
+            }
         }
 
-        if (current_sum > best_sum)
+        if (j + 1 != i)
         {
-            best_sum = current_sum;
-            best_start = temp_start;
-            best_end = i;
+            arr[j + 1] = key;
+            stats.writes++;
         }
     }
 
-    *max_sum = best_sum;
-    *start_idx = best_start;
-    *end_idx = best_end;
+    return stats;
+}
+
+/*
+ * Stable Two-Pointer Merge of two sorted arrays into dest.
+ * Time Complexity: O(n1 + n2).
+ */
+OpStats merge_sorted_arrays(const int a[], int n1, const int b[], int n2, int dest[])
+{
+    OpStats stats = {0, 0};
+    int i = 0, j = 0, k = 0;
+
+    while (i < n1 && j < n2)
+    {
+        stats.comparisons++;
+        if (a[i] <= b[j])
+        {
+            dest[k++] = a[i++];
+        }
+        else
+        {
+            dest[k++] = b[j++];
+        }
+        stats.writes++;
+    }
+
+    while (i < n1)
+    {
+        dest[k++] = a[i++];
+        stats.writes++;
+    }
+
+    while (j < n2)
+    {
+        dest[k++] = b[j++];
+        stats.writes++;
+    }
+
+    return stats;
 }
 
 // Expected output:
 
 /*
-Enter number of elements N (1 to 100): 8
-Enter 8 integer(s) (positive, zero, or negative):
-  arr[0] = -2
-  arr[1] = 1
-  arr[2] = -3
-  arr[3] = 4
-  arr[4] = -1
-  arr[5] = 2
-  arr[6] = 1
-  arr[7] = -5
+Enter size of Array A (1 to 50): 3
+Enter 3 integer(s) for Array A:
+  A[0] = 64
+  A[1] = 11
+  A[2] = 22
 
---- Input Buffer ---
-Array: [-2, 1, -3, 4, -1, 2, 1, -5]
+Enter size of Array B (1 to 50): 3
+Enter 3 integer(s) for Array B:
+  B[0] = 90
+  B[1] = 12
+  B[2] = 25
 
---- 1. Prefix Sum O(1) Range Query ---
-Enter inclusive query range [L, R] (0 <= L <= R < 8): 3 6
-Sum of subarray [3..6]: 6
+--- Stage 1: Insertion Sort ---
+Array A (Unsorted): [64, 11, 22]
+Array A (Sorted)  : [11, 22, 64]
+  -> Comparisons: 3 | Memory Writes: 4
 
---- 2. Kadane's Maximum Contiguous Subarray ---
-Maximum Subarray Sum : 6
-Optimal Slice Range  : [3..6]
-Subarray Elements    : [4, -1, 2, 1]
+Array B (Unsorted): [90, 12, 25]
+Array B (Sorted)  : [12, 25, 90]
+  -> Comparisons: 3 | Memory Writes: 4
+
+--- Stage 2: Two-Pointer Linear Merge ---
+Merged Result     : [11, 12, 22, 25, 64, 90]
+  -> Comparisons: 4 | Memory Writes: 6
 */
