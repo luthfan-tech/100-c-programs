@@ -1,4 +1,4 @@
-// Bubble Sort and Selection Sort
+// Element Frequency Counter and In-Place Duplicate Removal
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,26 +6,16 @@
 
 #define MAX_CAPACITY 100
 
-/* Telemetry struct for algorithm instrumentation */
-typedef struct
-{
-    long long comparisons;
-    long long swaps;
-} SortStats;
-
 /* Function Prototypes */
 int read_array(int arr[], int n);
-void copy_array(const int src[], int dest[], int n);
-void print_array(const char *label, const int arr[], int n);
-void swap_elements(int *a, int *b, SortStats *stats);
-SortStats bubble_sort(int arr[], int n);
-SortStats selection_sort(int arr[], int n);
+void print_array(const int arr[], int n);
+void print_frequencies(const int arr[], int n);
+int remove_duplicates(int arr[], int n);
 
 int main(void)
 {
     int n = 0;
-    int original[MAX_CAPACITY];
-    int work_arr[MAX_CAPACITY];
+    int arr[MAX_CAPACITY];
 
     printf("Enter the number of elements (1 to %d): ", MAX_CAPACITY);
     if (scanf("%d", &n) != 1 || n < 1 || n > MAX_CAPACITY)
@@ -35,30 +25,22 @@ int main(void)
     }
 
     printf("Enter %d integer(s):\n", n);
-    if (!read_array(original, n))
+    if (!read_array(arr, n))
     {
         fprintf(stderr, "Error: Invalid integer input encountered.\n");
         return EXIT_FAILURE;
     }
 
-    printf("\n--- Input Buffer ---\n");
-    print_array("Original      ", original, n);
+    printf("\n--- Original Array (Length = %d) ---\n", n);
+    print_array(arr, n);
 
-    /* 1. Bubble Sort Benchmark */
-    copy_array(original, work_arr, n);
-    SortStats b_stats = bubble_sort(work_arr, n);
+    printf("\n--- Element Frequency Report ---\n");
+    print_frequencies(arr, n);
 
-    printf("\n--- 1. Optimized Bubble Sort (Adaptive) ---\n");
-    print_array("Sorted Result ", work_arr, n);
-    printf("Comparisons   : %lld | Swaps: %lld\n", b_stats.comparisons, b_stats.swaps);
+    int new_n = remove_duplicates(arr, n);
 
-    /* 2. Selection Sort Benchmark */
-    copy_array(original, work_arr, n);
-    SortStats s_stats = selection_sort(work_arr, n);
-
-    printf("\n--- 2. Selection Sort (Minimum Writes) ---\n");
-    print_array("Sorted Result ", work_arr, n);
-    printf("Comparisons   : %lld | Swaps: %lld\n", s_stats.comparisons, s_stats.swaps);
+    printf("\n--- Deduplicated Array (New Length = %d) ---\n", new_n);
+    print_array(arr, new_n);
 
     return EXIT_SUCCESS;
 }
@@ -77,19 +59,10 @@ int read_array(int arr[], int n)
     return 1;
 }
 
-/* Copies n elements from src into dest. */
-void copy_array(const int src[], int dest[], int n)
+/* Prints array elements in bracketed format. */
+void print_array(const int arr[], int n)
 {
-    for (int i = 0; i < n; i++)
-    {
-        dest[i] = src[i];
-    }
-}
-
-/* Prints labeled array contents. */
-void print_array(const char *label, const int arr[], int n)
-{
-    printf("%s: [", label);
+    printf("[");
     for (int i = 0; i < n; i++)
     {
         printf("%d%s", arr[i], (i < n - 1) ? ", " : "");
@@ -97,83 +70,89 @@ void print_array(const char *label, const int arr[], int n)
     printf("]\n");
 }
 
-/* Swaps two integers and increments the swap telemetry counter. */
-void swap_elements(int *a, int *b, SortStats *stats)
+/* Counts and displays distinct element frequencies in O(N^2) without mutating arr. */
+void print_frequencies(const int arr[], int n)
 {
-    int temp = *a;
-    *a = *b;
-    *b = temp;
-    stats->swaps++;
-}
+    bool visited[MAX_CAPACITY] = {false};
 
-/* Optimized Bubble Sort with early-exit flag: O(N) best case, O(N^2) worst case. */
-SortStats bubble_sort(int arr[], int n)
-{
-    SortStats stats = {0, 0};
-
-    for (int i = 0; i < n - 1; i++)
+    for (int i = 0; i < n; i++)
     {
-        bool swapped = false;
-        for (int j = 0; j < n - i - 1; j++)
+        if (visited[i])
         {
-            stats.comparisons++;
-            if (arr[j] > arr[j + 1])
-            {
-                swap_elements(&arr[j], &arr[j + 1], &stats);
-                swapped = true;
-            }
+            continue;
         }
-        if (!swapped)
-        {
-            break;
-        }
-    }
-    return stats;
-}
 
-/* Selection Sort: O(N^2) comparisons, at most (N - 1) swaps. */
-SortStats selection_sort(int arr[], int n)
-{
-    SortStats stats = {0, 0};
-
-    for (int i = 0; i < n - 1; i++)
-    {
-        int min_idx = i;
+        int count = 1;
         for (int j = i + 1; j < n; j++)
         {
-            stats.comparisons++;
-            if (arr[j] < arr[min_idx])
+            if (arr[i] == arr[j])
             {
-                min_idx = j;
+                count++;
+                visited[j] = true;
             }
         }
-        if (min_idx != i)
+
+        printf("  %-6d -> %d %s\n", arr[i], count, (count == 1) ? "time" : "times");
+    }
+}
+
+/*
+ * Compacts arr in-place using a write pointer to keep only first occurrences.
+ * Time Complexity: O(N^2), Auxiliary Space: O(1). Returns new logical length.
+ */
+int remove_duplicates(int arr[], int n)
+{
+    if (n <= 1)
+    {
+        return n;
+    }
+
+    int write_idx = 0;
+
+    for (int read_idx = 0; read_idx < n; read_idx++)
+    {
+        bool already_seen = false;
+
+        for (int k = 0; k < write_idx; k++)
         {
-            swap_elements(&arr[min_idx], &arr[i], &stats);
+            if (arr[k] == arr[read_idx])
+            {
+                already_seen = true;
+                break;
+            }
+        }
+
+        if (!already_seen)
+        {
+            arr[write_idx++] = arr[read_idx];
         }
     }
-    return stats;
+
+    return write_idx;
 }
 
 // Expected output:
 
 /*
-Enter the number of elements (1 to 100): 5
-Enter 5 integer(s):
-  arr[0] = 64
-  arr[1] = 25
-  arr[2] = 12
-  arr[3] = 22
-  arr[4] = 11
+Enter the number of elements (1 to 100): 7
+Enter 7 integer(s):
+  arr[0] = 10
+  arr[1] = 20
+  arr[2] = 10
+  arr[3] = 30
+  arr[4] = 20
+  arr[5] = 40
+  arr[6] = 10
 
---- Input Buffer ---
-Original      : [64, 25, 12, 22, 11]
+--- Original Array (Length = 7) ---
+[10, 20, 10, 30, 20, 40, 10]
 
---- 1. Optimized Bubble Sort (Adaptive) ---
-Sorted Result : [11, 12, 22, 25, 64]
-Comparisons   : 10 | Swaps: 9
+--- Element Frequency Report ---
+  10     -> 3 times
+  20     -> 2 times
+  30     -> 1 time
+  40     -> 1 time
 
---- 2. Selection Sort (Minimum Writes) ---
-Sorted Result : [11, 12, 22, 25, 64]
-Comparisons   : 10 | Swaps: 4
+--- Deduplicated Array (New Length = 4) ---
+[10, 20, 30, 40]
 */
